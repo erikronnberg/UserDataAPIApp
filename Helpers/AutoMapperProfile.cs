@@ -11,7 +11,7 @@ namespace UserDataAPIApp.Helpers
     {
         public AutoMapperProfile()
         {
-            CreateMap<CreateRequest, User>();
+
         }
         
     }
