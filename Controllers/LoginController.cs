@@ -1,27 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using UserDataAPIApp.Models;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.VisualBasic;
 
 namespace JWTAuthenticationExample.Controllers
 {
-[ApiController]
-[Route("[controller]")]
-public class LoginController : ControllerBase
+    [ApiController]
+    [Route("[controller]")]
+    public class LoginController : ControllerBase
     {
         private readonly IConfiguration _config;
-        private UserManager<User> userManager;
+        private readonly UserManager<User> userManager;
+
+        public LoginController(UserManager<User> _userManager)
+        {
+            userManager = _userManager;
+        }
 
         public LoginController(IConfiguration config)
         {
@@ -64,7 +65,7 @@ public class LoginController : ControllerBase
             );
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
-        
+
         private async Task<User> AuthenticateUser(string username, string password)
         {
             var _user = await userManager.FindByIdAsync(username);

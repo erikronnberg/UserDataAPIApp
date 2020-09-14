@@ -45,7 +45,7 @@ namespace UserDataAPIApp
                         (Encoding.UTF8.GetBytes(Configuration["Jwt:Key"]))
                     };
                 });
-
+            services.AddControllers();
             services.AddAuthorization(config =>
             {
                 config.AddPolicy(Policies.Admin, Policies.AdminPolicy());
