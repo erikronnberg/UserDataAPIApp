@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace UserDataAPIApp.Models
 {
-    public class Get
+    public class GetAll
     {
         public string Id { get; set; }
         public string Username { get; set; }

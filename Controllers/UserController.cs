@@ -98,8 +98,29 @@ namespace UserDataAPIApp.Controllers
             var users = await userManager.Users.ToListAsync();
             if (users == null)
                 return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "Failed to get users! Please check user details and try again." });
-            var mappedResult = mapper.Map<IEnumerable<Get>>(users);
+            var mappedResult = mapper.Map<IEnumerable<GetAll>>(users);
             return Ok(mappedResult);
+        }
+
+        [Authorize]
+        [HttpGet]
+        [Route("get-user")]
+        public async Task<IActionResult> GetUser([FromBody] GetUser model)
+        {
+            var userExists = await userManager.FindByNameAsync(model.Username);
+            var user = Request.HttpContext.User;
+            //var tokenExists = user.Identity.Name;
+            var isAdmin = user.Claims.Where(x => x.Type == "Role").Any(x => x.Value == "Admin") == true;
+            if (userExists == null)
+            {
+                return StatusCode(StatusCodes.Status404NotFound);
+            }
+            if (userExists.UserName == user.Identity.Name || isAdmin != false)
+            {
+                return Ok(new Response { Status = "Success", Message = "User found!" });
+            }
+
+            return StatusCode(StatusCodes.Status401Unauthorized);
         }
 
         [Authorize]

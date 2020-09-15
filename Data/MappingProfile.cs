@@ -12,7 +12,7 @@ namespace UserDataAPIApp.Data
     {
         public MappingProfile()
         {
-            CreateMap<User, Get>().ReverseMap();
+            CreateMap<User, GetAll>().ReverseMap();
         }
     }
 }
