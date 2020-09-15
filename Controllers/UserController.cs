@@ -1,12 +1,17 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,13 +25,15 @@ namespace UserDataAPIApp.Controllers
     {
         private readonly UserManager<User> userManager;
         private readonly RoleManager<IdentityRole> roleManager;
-        private readonly IConfiguration _configuration;
+        private readonly IConfiguration configuration;
+        private readonly IMapper mapper;
 
-        public UserController(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, IConfiguration configuration)
+        public UserController(UserManager<User> _userManager, RoleManager<IdentityRole> _roleManager, IConfiguration _configuration, IMapper _mapper)
         {
-            this.userManager = userManager;
-            this.roleManager = roleManager;
-            _configuration = configuration;
+            userManager = _userManager;
+            roleManager = _roleManager;
+            configuration = _configuration;
+            mapper = _mapper;
         }
 
         [HttpPost]
@@ -50,6 +57,7 @@ namespace UserDataAPIApp.Controllers
             return Ok(new Response { Status = "Success", Message = "User created successfully!" });
         }
 
+        //[Authorize(Policies.Admin)]
         [HttpPost]
         [Route("register-admin")]
         public async Task<IActionResult> RegisterAdmin([FromBody] Register model)
@@ -62,7 +70,8 @@ namespace UserDataAPIApp.Controllers
             {
                 Email = model.Email,
                 SecurityStamp = Guid.NewGuid().ToString(),
-                UserName = model.Username
+                UserName = model.Username,
+                SocialSecurityNumber = int.Parse(model.SSN)
             };
             var result = await userManager.CreateAsync(user, model.Password);
             if (!result.Succeeded)
@@ -81,12 +90,36 @@ namespace UserDataAPIApp.Controllers
             return Ok(new Response { Status = "Success", Message = "User created successfully!" });
         }
 
-        //[Authorize(Policies.Admin)]
-        //[HttpDelete]
-        //[Route("delete")]
-        //public async Task<IActionResult> Delete([FromBody] int id)
-        //{
-        //    if ()
-        //}
+        [Authorize(Roles = Policies.Admin)]
+        [HttpGet]
+        [Route("all-users")]
+        public async Task<IActionResult> GetAll()
+        {
+            var users = await userManager.Users.ToListAsync();
+            if (users == null)
+                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "Failed to get users! Please check user details and try again." });
+            var mappedResult = mapper.Map<IEnumerable<Get>>(users);
+            return Ok(mappedResult);
+        }
+
+        [Authorize]
+        [HttpDelete]
+        [Route("delete")]
+        public async Task<IActionResult> Delete([FromBody] Delete delete)
+        {
+            var userToDelete = await userManager.FindByIdAsync(delete.id);
+            var user = Request.HttpContext.User;
+            if (userToDelete == null)
+                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "User does not exists!" });
+
+            if (user.Identity.Name != userToDelete.UserName && user.Claims.Where(s => s.Type == "Role").Any(s => s.Value == "Admin") == false)
+                return StatusCode(StatusCodes.Status401Unauthorized, new Response { Status = "Error", Message = "Unathorized to delete this user!" });
+
+            var result = await userManager.DeleteAsync(userToDelete);
+            if (!result.Succeeded)
+                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "User deletion failed! Please check user details and try again." });
+
+            return Ok(new Response { Status = "Success", Message = "User deleted successfully!" });
+        }
     }
 }
