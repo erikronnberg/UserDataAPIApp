@@ -37,7 +37,7 @@ namespace UserDataAPIApp.Controllers
             var userExists = await userManager.FindByNameAsync(model.Username);
 
             if (userExists != null)
-                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "User already exists!" });
+                return StatusCode(StatusCodes.Status400BadRequest, new Response { Status = "Error", Message = "User already exists with that username!" });
 
             User user = new User()
             {
@@ -62,7 +62,7 @@ namespace UserDataAPIApp.Controllers
             var userExists = await userManager.FindByNameAsync(model.Username);
 
             if (userExists != null)
-                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "User already exists!" });
+                return StatusCode(StatusCodes.Status400BadRequest, new Response { Status = "Error", Message = "User already exists!" });
 
             User user = new User()
             {
@@ -95,7 +95,7 @@ namespace UserDataAPIApp.Controllers
         {
             var users = await userManager.Users.ToListAsync();
             if (users == null)
-                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "Failed to get users! Please check user details and try again." });
+                return StatusCode(StatusCodes.Status404NotFound, new Response { Status = "Error", Message = "No users found!" });
 
             var mappedResult = mapper.Map<IEnumerable<GetAll>>(users);
             return Ok(mappedResult);
@@ -109,11 +109,11 @@ namespace UserDataAPIApp.Controllers
             var userToGet = await userManager.FindByNameAsync(model.Username);
             var user = Request.HttpContext.User;
 
+            if (userToGet == null)
+                return StatusCode(StatusCodes.Status400BadRequest, new Response { Status = "Error", Message = "" });
+
             if (user.Identity.Name != userToGet.UserName && user.Claims.Where(x => x.Type == "Role").Any(x => x.Value == "Admin") == false)
                 return StatusCode(StatusCodes.Status401Unauthorized, new Response { Status = "Error", Message = "Unathorized to get this user!" });
-
-            if (userToGet == null)
-                return StatusCode(StatusCodes.Status404NotFound, new Response { Status = "Error", Message = "No user was found!" });
 
             return Ok(userToGet);
         }
@@ -126,11 +126,11 @@ namespace UserDataAPIApp.Controllers
             var userToDelete = await userManager.FindByIdAsync(model.id);
             var user = Request.HttpContext.User;
 
+            if (userToDelete == null)
+                return StatusCode(StatusCodes.Status400BadRequest, new Response { Status = "Error", Message = "" });
+
             if (user.Identity.Name != userToDelete.UserName && user.Claims.Where(s => s.Type == "Role").Any(s => s.Value == "Admin") == false)
                 return StatusCode(StatusCodes.Status401Unauthorized, new Response { Status = "Error", Message = "Unathorized to delete this user!" });
-
-            if (userToDelete == null)
-                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "User does not exists!" });
 
             var result = await userManager.DeleteAsync(userToDelete);
             if (!result.Succeeded)
