@@ -12,7 +12,7 @@ namespace UserDataAPIApp.Models
         public string Email { get; set; }
 
         [Required(ErrorMessage = "SSN is required")]
-        public string SSN { get; set; }
+        public string SocialSecurityNumber { get; set; }
 
         [Required(ErrorMessage = "Password is required")]
         public string Password { get; set; }

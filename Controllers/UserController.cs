@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.JsonWebTokens;
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Threading.Tasks;
 using UserDataAPIApp.Models;
@@ -21,6 +23,7 @@ namespace UserDataAPIApp.Controllers
         private readonly RoleManager<IdentityRole> roleManager;
         private readonly IConfiguration configuration;
         private readonly IMapper mapper;
+        private readonly string typeSchema = @"http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
 
         public UserController(UserManager<Account> _userManager, RoleManager<IdentityRole> _roleManager, IConfiguration _configuration, IMapper _mapper)
         {
@@ -43,7 +46,8 @@ namespace UserDataAPIApp.Controllers
             {
                 Email = model.Email,
                 SecurityStamp = Guid.NewGuid().ToString(),
-                UserName = model.Username
+                UserName = model.Username,
+                SocialSecurityNumber = long.Parse(model.SocialSecurityNumber)
             };
 
             var result = await userManager.CreateAsync(user, model.Password);
@@ -54,7 +58,7 @@ namespace UserDataAPIApp.Controllers
             return Ok(new StatusResponse { Status = "Success", Message = "User created successfully!" });
         }
 
-        [Authorize(Policies.Admin)]
+        [Authorize(Roles = Policies.Admin)]
         [HttpPost]
         [Route("register-admin")]
         public async Task<IActionResult> RegisterAdmin([FromBody] RegisterUser model)
@@ -69,7 +73,7 @@ namespace UserDataAPIApp.Controllers
                 Email = model.Email,
                 SecurityStamp = Guid.NewGuid().ToString(),
                 UserName = model.Username,
-                SocialSecurityNumber = int.Parse(model.SSN)
+                SocialSecurityNumber = long.Parse(model.SocialSecurityNumber)
             };
             var result = await userManager.CreateAsync(user, model.Password);
 
@@ -97,41 +101,65 @@ namespace UserDataAPIApp.Controllers
             if (users == null)
                 return StatusCode(StatusCodes.Status404NotFound, new StatusResponse { Status = "Error", Message = "No users found!" });
 
-            var mappedResult = mapper.Map<IEnumerable<UserResponse>>(users);
+            var mappedResult = mapper.Map<UserResponse>(users);
             return Ok(mappedResult);
         }
 
         [Authorize]
         [HttpGet]
         [Route("get-single-user")]
-        public async Task<IActionResult> GetUser([FromBody] GetUser model)
+        public async Task<IActionResult> GetUser(string username)
         {
-            var userToGet = await userManager.FindByNameAsync(model.Username);
+            var userToGet = await userManager.FindByNameAsync(username);
             var user = Request.HttpContext.User;
 
             if (userToGet == null)
                 return StatusCode(StatusCodes.Status400BadRequest, new StatusResponse { Status = "Error", Message = "" });
 
-            if (user.Identity.Name != userToGet.UserName && user.Claims.Where(x => x.Type == "Role").Any(x => x.Value == "Admin") == false)
+            if (user.Identity.Name != userToGet.UserName && user.Claims.Where(x => x.Type == typeSchema).Any(x => x.Value == "Admin") == false)
                 return StatusCode(StatusCodes.Status401Unauthorized, new StatusResponse { Status = "Error", Message = "Unathorized to get this user!" });
 
-            var mappedResult = mapper.Map<IEnumerable<UserResponse>>(userToGet);
+            var mappedResult = mapper.Map<UserResponse>(userToGet);
 
-            return Ok(userToGet);
+            return Ok(mappedResult);
+        }
+
+        [Authorize]
+        [HttpPatch]
+        [Route("update")]
+        public async Task<IActionResult> Update(string username, [FromBody] UpdateUser model)
+        {
+            var userToUpdate = await userManager.FindByNameAsync(username);
+            var user = Request.HttpContext.User;
+
+            if (userToUpdate == null)
+                return StatusCode(StatusCodes.Status400BadRequest, new StatusResponse { Status = "Error", Message = "" });
+
+            if (user.Identity.Name != userToUpdate.UserName && user.Claims.Where(s => s.Type == typeSchema).Any(s => s.Value == "Admin") == false)
+                return StatusCode(StatusCodes.Status401Unauthorized, new StatusResponse { Status = "Error", Message = "Unathorized to update this user!" });
+
+            var mappedResult = mapper.Map<UpdateUser, Account>(model, userToUpdate);
+
+            var result = await userManager.UpdateAsync(mappedResult);
+
+            if (!result.Succeeded)
+                return StatusCode(StatusCodes.Status500InternalServerError, new StatusResponse { Status = "Error", Message = "User update failed! Please check user details and try again." });
+
+            return Ok(new StatusResponse { Status = "Success", Message = "User updated successfully!" });
         }
 
         [Authorize]
         [HttpDelete]
         [Route("delete")]
-        public async Task<IActionResult> Delete([FromBody] DeleteUser model)
+        public async Task<IActionResult> Delete(string username)
         {
-            var userToDelete = await userManager.FindByIdAsync(model.id);
+            var userToDelete = await userManager.FindByNameAsync(username);
             var user = Request.HttpContext.User;
 
             if (userToDelete == null)
                 return StatusCode(StatusCodes.Status400BadRequest, new StatusResponse { Status = "Error", Message = "" });
 
-            if (user.Identity.Name != userToDelete.UserName && user.Claims.Where(s => s.Type == "Role").Any(s => s.Value == "Admin") == false)
+            if (user.Identity.Name != userToDelete.UserName && user.Claims.Where(s => s.Type == typeSchema).Any(s => s.Value == "Admin") == false)
                 return StatusCode(StatusCodes.Status401Unauthorized, new StatusResponse { Status = "Error", Message = "Unathorized to delete this user!" });
 
             var result = await userManager.DeleteAsync(userToDelete);

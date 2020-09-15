@@ -8,6 +8,7 @@ namespace UserDataAPIApp.Data
         public MappingProfile()
         {
             CreateMap<Account, UserResponse>().ReverseMap();
+            CreateMap<UpdateUser, Account>().ReverseMap();
         }
     }
 }

@@ -4,6 +4,6 @@ namespace UserDataAPIApp.Models
 {
     public class Account : IdentityUser
     {
-        public int SocialSecurityNumber { get; set; }
+        public long SocialSecurityNumber { get; set; }
     }
 }
