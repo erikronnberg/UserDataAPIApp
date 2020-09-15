@@ -4,7 +4,7 @@ using UserDataAPIApp.Models;
 
 namespace UserDataAPIApp.Data
 {
-    public class DataContext : IdentityDbContext<User>
+    public class DataContext : IdentityDbContext<Account>
     {
         public DataContext(DbContextOptions<DataContext> options) : base(options)
         {

@@ -1,6 +1,6 @@
 ﻿namespace UserDataAPIApp.Models
 {
-    public class GetAll
+    public class UserResponse
     {
         public string Id { get; set; }
         public string Username { get; set; }

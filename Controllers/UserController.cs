@@ -17,12 +17,12 @@ namespace UserDataAPIApp.Controllers
     [ApiController]
     public class UserController : ControllerBase
     {
-        private readonly UserManager<User> userManager;
+        private readonly UserManager<Account> userManager;
         private readonly RoleManager<IdentityRole> roleManager;
         private readonly IConfiguration configuration;
         private readonly IMapper mapper;
 
-        public UserController(UserManager<User> _userManager, RoleManager<IdentityRole> _roleManager, IConfiguration _configuration, IMapper _mapper)
+        public UserController(UserManager<Account> _userManager, RoleManager<IdentityRole> _roleManager, IConfiguration _configuration, IMapper _mapper)
         {
             userManager = _userManager;
             roleManager = _roleManager;
@@ -32,14 +32,14 @@ namespace UserDataAPIApp.Controllers
 
         [HttpPost]
         [Route("register")]
-        public async Task<IActionResult> Register([FromBody] Register model)
+        public async Task<IActionResult> Register([FromBody] RegisterUser model)
         {
             var userExists = await userManager.FindByNameAsync(model.Username);
 
             if (userExists != null)
-                return StatusCode(StatusCodes.Status400BadRequest, new Response { Status = "Error", Message = "User already exists with that username!" });
+                return StatusCode(StatusCodes.Status400BadRequest, new StatusResponse { Status = "Error", Message = "User already exists with that username!" });
 
-            User user = new User()
+            Account user = new Account()
             {
                 Email = model.Email,
                 SecurityStamp = Guid.NewGuid().ToString(),
@@ -49,22 +49,22 @@ namespace UserDataAPIApp.Controllers
             var result = await userManager.CreateAsync(user, model.Password);
 
             if (!result.Succeeded)
-                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "User creation failed! Please check user details and try again." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new StatusResponse { Status = "Error", Message = "User creation failed! Please check user details and try again." });
 
-            return Ok(new Response { Status = "Success", Message = "User created successfully!" });
+            return Ok(new StatusResponse { Status = "Success", Message = "User created successfully!" });
         }
 
         [Authorize(Policies.Admin)]
         [HttpPost]
         [Route("register-admin")]
-        public async Task<IActionResult> RegisterAdmin([FromBody] Register model)
+        public async Task<IActionResult> RegisterAdmin([FromBody] RegisterUser model)
         {
             var userExists = await userManager.FindByNameAsync(model.Username);
 
             if (userExists != null)
-                return StatusCode(StatusCodes.Status400BadRequest, new Response { Status = "Error", Message = "User already exists!" });
+                return StatusCode(StatusCodes.Status400BadRequest, new StatusResponse { Status = "Error", Message = "User already exists!" });
 
-            User user = new User()
+            Account user = new Account()
             {
                 Email = model.Email,
                 SecurityStamp = Guid.NewGuid().ToString(),
@@ -74,7 +74,7 @@ namespace UserDataAPIApp.Controllers
             var result = await userManager.CreateAsync(user, model.Password);
 
             if (!result.Succeeded)
-                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "User creation failed! Please check user details and try again." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new StatusResponse { Status = "Error", Message = "User creation failed! Please check user details and try again." });
 
             if (!await roleManager.RoleExistsAsync(Policies.Admin))
                 await roleManager.CreateAsync(new IdentityRole(Policies.Admin));
@@ -85,35 +85,37 @@ namespace UserDataAPIApp.Controllers
             if (await roleManager.RoleExistsAsync(Policies.Admin))
                 await userManager.AddToRoleAsync(user, Policies.Admin);
 
-            return Ok(new Response { Status = "Success", Message = "User created successfully!" });
+            return Ok(new StatusResponse { Status = "Success", Message = "User created successfully!" });
         }
 
         [Authorize(Roles = Policies.Admin)]
         [HttpGet]
-        [Route("all-users")]
+        [Route("get-all-users")]
         public async Task<IActionResult> GetAll()
         {
             var users = await userManager.Users.ToListAsync();
             if (users == null)
-                return StatusCode(StatusCodes.Status404NotFound, new Response { Status = "Error", Message = "No users found!" });
+                return StatusCode(StatusCodes.Status404NotFound, new StatusResponse { Status = "Error", Message = "No users found!" });
 
-            var mappedResult = mapper.Map<IEnumerable<GetAll>>(users);
+            var mappedResult = mapper.Map<IEnumerable<UserResponse>>(users);
             return Ok(mappedResult);
         }
 
         [Authorize]
         [HttpGet]
-        [Route("get-user")]
+        [Route("get-single-user")]
         public async Task<IActionResult> GetUser([FromBody] GetUser model)
         {
             var userToGet = await userManager.FindByNameAsync(model.Username);
             var user = Request.HttpContext.User;
 
             if (userToGet == null)
-                return StatusCode(StatusCodes.Status400BadRequest, new Response { Status = "Error", Message = "" });
+                return StatusCode(StatusCodes.Status400BadRequest, new StatusResponse { Status = "Error", Message = "" });
 
             if (user.Identity.Name != userToGet.UserName && user.Claims.Where(x => x.Type == "Role").Any(x => x.Value == "Admin") == false)
-                return StatusCode(StatusCodes.Status401Unauthorized, new Response { Status = "Error", Message = "Unathorized to get this user!" });
+                return StatusCode(StatusCodes.Status401Unauthorized, new StatusResponse { Status = "Error", Message = "Unathorized to get this user!" });
+
+            var mappedResult = mapper.Map<IEnumerable<UserResponse>>(userToGet);
 
             return Ok(userToGet);
         }
@@ -121,22 +123,22 @@ namespace UserDataAPIApp.Controllers
         [Authorize]
         [HttpDelete]
         [Route("delete")]
-        public async Task<IActionResult> Delete([FromBody] Delete model)
+        public async Task<IActionResult> Delete([FromBody] DeleteUser model)
         {
             var userToDelete = await userManager.FindByIdAsync(model.id);
             var user = Request.HttpContext.User;
 
             if (userToDelete == null)
-                return StatusCode(StatusCodes.Status400BadRequest, new Response { Status = "Error", Message = "" });
+                return StatusCode(StatusCodes.Status400BadRequest, new StatusResponse { Status = "Error", Message = "" });
 
             if (user.Identity.Name != userToDelete.UserName && user.Claims.Where(s => s.Type == "Role").Any(s => s.Value == "Admin") == false)
-                return StatusCode(StatusCodes.Status401Unauthorized, new Response { Status = "Error", Message = "Unathorized to delete this user!" });
+                return StatusCode(StatusCodes.Status401Unauthorized, new StatusResponse { Status = "Error", Message = "Unathorized to delete this user!" });
 
             var result = await userManager.DeleteAsync(userToDelete);
             if (!result.Succeeded)
-                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "User deletion failed! Please check user details and try again." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new StatusResponse { Status = "Error", Message = "User deletion failed! Please check user details and try again." });
 
-            return Ok(new Response { Status = "Success", Message = "User deleted successfully!" });
+            return Ok(new StatusResponse { Status = "Success", Message = "User deleted successfully!" });
         }
     }
 }

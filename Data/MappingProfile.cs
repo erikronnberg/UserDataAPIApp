@@ -7,7 +7,7 @@ namespace UserDataAPIApp.Data
     {
         public MappingProfile()
         {
-            CreateMap<User, GetAll>().ReverseMap();
+            CreateMap<Account, UserResponse>().ReverseMap();
         }
     }
 }

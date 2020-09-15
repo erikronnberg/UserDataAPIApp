@@ -1,6 +1,6 @@
 ﻿namespace UserDataAPIApp.Models
 {
-    public class Delete
+    public class DeleteUser
     {
         public string id { get; set; }
     }

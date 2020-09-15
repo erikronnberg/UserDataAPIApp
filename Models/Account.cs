@@ -2,7 +2,7 @@
 
 namespace UserDataAPIApp.Models
 {
-    public class User : IdentityUser
+    public class Account : IdentityUser
     {
         public int SocialSecurityNumber { get; set; }
     }

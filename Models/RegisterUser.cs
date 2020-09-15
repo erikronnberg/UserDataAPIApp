@@ -2,7 +2,7 @@
 
 namespace UserDataAPIApp.Models
 {
-    public class Register
+    public class RegisterUser
     {
         [Required(ErrorMessage = "User Name is required")]
         public string Username { get; set; }
