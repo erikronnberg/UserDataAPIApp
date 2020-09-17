@@ -58,7 +58,7 @@ namespace UserDataAPIApp.Controllers
             return Ok(new StatusResponse { Status = "Success", Message = "User created successfully!" });
         }
 
-        [Authorize(Roles = Policies.Admin)]
+        //[Authorize(Roles = Policies.Admin)]
         [HttpPost]
         [Route("register-admin")]
         public async Task<IActionResult> RegisterAdmin([FromBody] RegisterUser model)
@@ -92,7 +92,7 @@ namespace UserDataAPIApp.Controllers
             return Ok(new StatusResponse { Status = "Success", Message = "User created successfully!" });
         }
 
-        [Authorize(Roles = Policies.Admin)]
+        //[Authorize(Roles = Policies.Admin)]
         [HttpGet]
         [Route("get-all-users")]
         public async Task<IActionResult> GetAll()
@@ -101,7 +101,7 @@ namespace UserDataAPIApp.Controllers
             if (users == null)
                 return StatusCode(StatusCodes.Status404NotFound, new StatusResponse { Status = "Error", Message = "No users found!" });
 
-            var mappedResult = mapper.Map<UserResponse>(users);
+            var mappedResult = mapper.Map<IEnumerable<UserResponse>>(users);
             return Ok(mappedResult);
         }
 
